@@ -2,18 +2,18 @@ import http.server
 import socketserver
 import json
 import os
+import ssl
 
-# Load configuration from config.json
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
 
-# Get the port from the configuration file, default to 8000 if not specified
 port = config.get('port', 8000)
+use_https = config.get('use_https', True)
+ssl_cert = config.get('ssl_cert')
+ssl_key = config.get('ssl_key')
 
-# Print message indicating the WebSocket has started on the specified port
 purple_text = "\033[95mWEBSOCKET: Started on port {}\033[0m".format(port)
 
-# Define the request handler class
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
         cwd = os.getcwd()
@@ -22,7 +22,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             os.makedirs(web_dir)
         return os.path.join(web_dir, path.lstrip('/'))
 
-# Create and start the HTTP server
-with socketserver.TCPServer(("", port), MyHandler) as httpd:
-    print(purple_text)
-    httpd.serve_forever()
+if use_https and ssl_cert and ssl_key:
+    with socketserver.TCPServer(("", port), MyHandler) as httpd:
+        httpd.socket = ssl.wrap_socket(httpd.socket, certfile=ssl_cert, keyfile=ssl_key, server_side=True)
+        print(purple_text)
+        httpd.serve_forever()
+else:
+    with socketserver.TCPServer(("", port), MyHandler) as httpd:
+        print(purple_text)
+        httpd.serve_forever()
